@@ -32,14 +32,8 @@
 
 ## 🚀 快速开始
 
-### 方式一：使用 exe 安装包（推荐）
 
-1. 从 [Releases](https://github.com//Kelvin-LH/comfy-zkit-ui/releases) 下载最新的安装包
-2. 运行安装程序，按提示完成安装
-3. 启动 ComfyUI 服务
-4. 运行 "ComfyZKit 图生卡通" 应用
-
-### 方式二：从源码运行
+### 从源码运行
 
 ```bash
 # 克隆项目
