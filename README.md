@@ -19,7 +19,6 @@
 - **前端**：React 18 + TypeScript + Tailwind CSS
 - **后端**：Express.js
 - **数据存储**：Excel (xlsx)
-- **桌面打包**：Electron
 
 ## 📋 前置要求
 
@@ -35,7 +34,7 @@
 
 ### 方式一：使用 exe 安装包（推荐）
 
-1. 从 [Releases](https://github.com/YOUR_USERNAME/comfy-zkit-ui/releases) 下载最新的安装包
+1. 从 [Releases](https://github.com//Kelvin-LH/comfy-zkit-ui/releases) 下载最新的安装包
 2. 运行安装程序，按提示完成安装
 3. 启动 ComfyUI 服务
 4. 运行 "ComfyZKit 图生卡通" 应用
@@ -53,18 +52,7 @@ npm install
 # 开发模式运行
 npm run dev
 
-# 或者运行 Electron 桌面版
-npm run electron:dev
 ```
-
-## 📦 构建安装包
-
-```bash
-# 构建 exe 安装包
-npm run electron:build
-```
-
-构建完成后，安装包位于 `release` 目录。
 
 ## 📖 使用说明
 
@@ -106,7 +94,6 @@ comfy-zkit-ui/
 │   └── server/           # 后端代码
 │       ├── routes/       # API 路由
 │       └── services/     # 服务模块
-├── electron/             # Electron 主进程
 ├── data/                 # 数据文件（Excel）
 ├── uploads/              # 上传的图片
 └── public/               # 静态资源
