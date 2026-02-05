@@ -8,7 +8,14 @@ export interface ComfyUIService {
 }
 
 export function createComfyUIService(baseUrl: string): ComfyUIService {
-  const normalizedUrl = baseUrl.replace(/\/$/, '');
+  // 确保 ComfyUI 的 URL 总是指向 127.0.0.1
+  let normalizedUrl = baseUrl.replace(/\/$/, '');
+  
+  // 如果提供的 URL 不是本地地址，强制使用 127.0.0.1
+  if (!normalizedUrl.includes('127.0.0.1') && !normalizedUrl.includes('localhost')) {
+    console.warn('警告: ComfyUI URL 应该是本地地址，强制使用 http://127.0.0.1:8188');
+    normalizedUrl = 'http://127.0.0.1:8188';
+  }
 
   async function uploadImage(imageBuffer: Buffer, filename: string): Promise<string> {
     const formData = new FormData();

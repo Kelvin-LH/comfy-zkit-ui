@@ -53,8 +53,26 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
+// 允许从任何 IP 地址访问
+app.listen(PORT, '0.0.0.0', () => {
+  const hostname = require('os').hostname();
+  const interfaces = require('os').networkInterfaces();
+  let ipAddress = 'localhost';
+  
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // 跳过内部和 IPv6 地址
+      if (iface.family === 'IPv4' && !iface.internal) {
+        ipAddress = iface.address;
+        break;
+      }
+    }
+  }
+  
+  console.log(`\n✓ 服务器运行在 http://0.0.0.0:${PORT}`);
+  console.log(`✓ 本地访问: http://localhost:${PORT}`);
+  console.log(`✓ 网络访问: http://${ipAddress}:${PORT}`);
+  console.log(`✓ ComfyUI 服务地址: http://127.0.0.1:8188 (仅本地)\n`);
 });
 
 export default app;
