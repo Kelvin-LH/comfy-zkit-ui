@@ -1,8 +1,7 @@
 {
   "name": "comfy-zkit-ui",
   "version": "1.0.0",
-  "description": "ComfyUI 图生卡通助手 - 独立桌面版",
-  "main": "electron/main.js",
+  "description": "ComfyUI 图生卡通助手 - 网页应用版",
   "author": "ComfyZKit",
   "license": "MIT",
   "scripts": {
@@ -12,9 +11,8 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "esbuild src/server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "npm run build && electron-builder",
-    "start": "node dist/server/index.js"
+    "start": "node dist/server/index.js",
+    "preview": "npm run build && npm run start"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -41,14 +39,11 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.2",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.5",
-    "wait-on": "^8.0.1",
     "esbuild": "^0.25.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -56,39 +51,5 @@
     "sonner": "^2.0.7",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.3.1"
-  },
-  "build": {
-    "appId": "com.comfyzkit.ui",
-    "productName": "ComfyZKit 图生卡通",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "data",
-        "to": "data"
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        }
-      ],
-      "icon": "public/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "ComfyZKit 图生卡通"
-    }
   }
 }
