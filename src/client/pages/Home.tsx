@@ -79,35 +79,34 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
   // Handle camera
   const startCamera = async () => {
     try {
-      // 请求摄像头权限
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
+      // 如果已有流，先停止旧流，避免黑屏
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
           facingMode: 'user',
           width: { ideal: 1280 },
-          height: { ideal: 720 }
+          height: { ideal: 720 },
         },
-        audio: false
+        audio: false,
       });
-      
+
       streamRef.current = stream;
-      
-      // 确保 video 元素已挂载
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
-        // 等待视频元数据加载完成
-        videoRef.current.onloadedmetadata = () => {
-          console.log('视频元数据已加载，分辨率:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
-          // 强制播放
-          if (videoRef.current) {
-            videoRef.current.play().catch(err => {
-              console.error('视频播放失败:', err);
-              toast.error('视频播放失败，请检查摄像头权限');
-            });
-          }
-        };
+        try {
+          await videoRef.current.play(); // 直接播放
+          console.log('摄像头已启动，分辨率:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight);
+        } catch (err) {
+          console.error('视频播放失败:', err);
+          toast.error('视频播放失败，请检查摄像头权限');
+        }
       }
-      
+
       setCameraActive(true);
       toast.success('摄像头已启动');
     } catch (error) {
@@ -130,6 +129,12 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause(); // 暂停视频
+      } catch {}
+      videoRef.current.srcObject = null; // 重置视频源
     }
     setCameraActive(false);
   };
@@ -428,14 +433,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                       playsInline
                       muted
                       controls={false}
-                      crossOrigin="anonymous"
                       className="w-full h-auto rounded-lg bg-black object-cover aspect-square"
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        height: 'auto',
-                        backgroundColor: '#000'
-                      }}
                     />
                     <div className="flex gap-3">
                       <button onClick={capturePhoto} className="btn btn-primary flex-1">
