@@ -79,16 +79,43 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
   // Handle camera
   const startCamera = async () => {
     try {
+      // 请求摄像头权限
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user', width: 1280, height: 720 } 
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
       });
+      
       streamRef.current = stream;
+      
+      // 确保 video 元素已挂载
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        // 强制播放
+        videoRef.current.play().catch(err => {
+          console.error('视频播放失败:', err);
+          toast.error('视频播放失败，请检查摄像头权限');
+        });
       }
+      
       setCameraActive(true);
+      toast.success('摄像头已启动');
     } catch (error) {
-      toast.error('无法访问摄像头');
+      console.error('摄像头错误:', error);
+      if (error instanceof DOMException) {
+        if (error.name === 'NotAllowedError') {
+          toast.error('请允许访问摄像头权限');
+        } else if (error.name === 'NotFoundError') {
+          toast.error('未找到摄像头设备');
+        } else {
+          toast.error('无法访问摄像头: ' + error.message);
+        }
+      } else {
+        toast.error('无法访问摄像头');
+      }
     }
   };
 
@@ -392,7 +419,18 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                       ref={videoRef}
                       autoPlay
                       playsInline
-                      className="w-full rounded-lg bg-black"
+                      muted
+                      controls={false}
+                      width={640}
+                      height={480}
+                      className="w-full rounded-lg bg-black object-cover aspect-square"
+                      onLoadedMetadata={() => {
+                        if (videoRef.current) {
+                          videoRef.current.play().catch(err => {
+                            console.error('播放失败:', err);
+                          });
+                        }
+                      }}
                     />
                     <div className="flex gap-3">
                       <button onClick={capturePhoto} className="btn btn-primary flex-1">
