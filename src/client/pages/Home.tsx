@@ -94,11 +94,18 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       // 确保 video 元素已挂载
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        // 强制播放
-        videoRef.current.play().catch(err => {
-          console.error('视频播放失败:', err);
-          toast.error('视频播放失败，请检查摄像头权限');
-        });
+        
+        // 等待视频元数据加载完成
+        videoRef.current.onloadedmetadata = () => {
+          console.log('视频元数据已加载，分辨率:', videoRef.current?.videoWidth, 'x', videoRef.current?.videoHeight);
+          // 强制播放
+          if (videoRef.current) {
+            videoRef.current.play().catch(err => {
+              console.error('视频播放失败:', err);
+              toast.error('视频播放失败，请检查摄像头权限');
+            });
+          }
+        };
       }
       
       setCameraActive(true);
@@ -421,15 +428,13 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                       playsInline
                       muted
                       controls={false}
-                      width={640}
-                      height={480}
-                      className="w-full rounded-lg bg-black object-cover aspect-square"
-                      onLoadedMetadata={() => {
-                        if (videoRef.current) {
-                          videoRef.current.play().catch(err => {
-                            console.error('播放失败:', err);
-                          });
-                        }
+                      crossOrigin="anonymous"
+                      className="w-full h-auto rounded-lg bg-black object-cover aspect-square"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        height: 'auto',
+                        backgroundColor: '#000'
                       }}
                     />
                     <div className="flex gap-3">
