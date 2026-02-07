@@ -1,9 +1,21 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
-import { 
-  Upload, Camera, Wand2, Download, Printer, RefreshCw, 
-  Lock, Unlock, Settings, LogIn, LogOut, User, ChevronDown,
-  Sparkles, ImageIcon
+import {
+  Upload,
+  Camera,
+  Wand2,
+  Download,
+  Printer,
+  RefreshCw,
+  Lock,
+  Unlock,
+  Settings,
+  LogIn,
+  LogOut,
+  User,
+  ChevronDown,
+  Sparkles,
+  ImageIcon,
 } from 'lucide-react';
 import Login from './Login';
 
@@ -76,65 +88,42 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
     reader.readAsDataURL(file);
   };
 
-  // Handle camera
+  // Handle camera: request the stream and enable the camera UI. The actual
+  // attachment of the stream to the video element happens in an effect once
+  // the video element is mounted.
   const startCamera = async () => {
     try {
-      // 如果已有流，先停止旧流，避免黑屏
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
+        video: { facingMode: 'user', width: 1280, height: 720 },
       });
-
+      // Save the stream so it can be attached once the video element is rendered.
       streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        try {
-          await videoRef.current.play(); // 直接播放
-          console.log('摄像头已启动，分辨率:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight);
-        } catch (err) {
-          console.error('视频播放失败:', err);
-          toast.error('视频播放失败，请检查摄像头权限');
-        }
-      }
-
+      // Activate the camera UI; the video element will render after this state update.
       setCameraActive(true);
-      toast.success('摄像头已启动');
     } catch (error) {
-      console.error('摄像头错误:', error);
-      if (error instanceof DOMException) {
-        if (error.name === 'NotAllowedError') {
-          toast.error('请允许访问摄像头权限');
-        } else if (error.name === 'NotFoundError') {
-          toast.error('未找到摄像头设备');
-        } else {
-          toast.error('无法访问摄像头: ' + error.message);
-        }
-      } else {
-        toast.error('无法访问摄像头');
-      }
+      toast.error('无法访问摄像头');
     }
   };
 
+  // Once the camera UI is active and we have a stream, attach it to the video element.
+  React.useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current) {
+      const videoEl = videoRef.current;
+      videoEl.srcObject = streamRef.current;
+      // Mute the video to satisfy autoplay restrictions in some browsers.
+      videoEl.muted = true;
+      videoEl
+        .play()
+        .catch(() => {
+          // Autoplay may still be blocked; user interaction will trigger playback.
+        });
+    }
+  }, [cameraActive]);
+
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-    }
-    if (videoRef.current) {
-      try {
-        videoRef.current.pause(); // 暂停视频
-      } catch {}
-      videoRef.current.srcObject = null; // 重置视频源
     }
     setCameraActive(false);
   };
@@ -170,7 +159,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
         const progress = Math.min(elapsed / duration, 1);
         const currentValue = start + (end - start) * progress;
         setProgress(Math.round(currentValue));
-        
+
         if (progress < 1) {
           requestAnimationFrame(animate);
         } else {
@@ -200,7 +189,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       const uploadRes = await fetch('/api/generate/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: inputImage })
+        body: JSON.stringify({ imageBase64: inputImage }),
       });
 
       if (!uploadRes.ok) {
@@ -222,7 +211,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       await animateProgress(PROGRESS_STEPS.QUEUE.start, PROGRESS_STEPS.QUEUE.end, 500);
 
       setProgressText(PROGRESS_STEPS.GENERATE.text);
-      
+
       // Start progress animation
       let currentProgress = PROGRESS_STEPS.GENERATE.start;
       const progressInterval = setInterval(() => {
@@ -239,8 +228,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
           imageUrl: uploadData.url,
           localPath: uploadData.localPath,
           seed: seedLocked ? seed : Math.floor(Math.random() * 2147483647),
-          comfyuiUrl
-        })
+          comfyuiUrl,
+        }),
       });
 
       clearInterval(progressInterval);
@@ -268,8 +257,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
             imageUrl: finalUrl,
             localPath: finalPath,
             textWatermark,
-            qrContent
-          })
+            qrContent,
+          }),
         });
 
         if (watermarkRes.ok) {
@@ -286,7 +275,6 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       setResultImage(finalUrl);
       setLocalPath(finalPath);
       toast.success('卡通图生成成功！');
-
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '生成失败');
     } finally {
@@ -365,27 +353,18 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
             {user ? (
               <>
                 {user.role === 'admin' && (
-                  <button
-                    onClick={onAdminClick}
-                    className="btn btn-outline"
-                  >
+                  <button onClick={onAdminClick} className="btn btn-outline">
                     <Settings className="h-4 w-4 mr-2" />
                     管理设置
                   </button>
                 )}
-                <button
-                  onClick={onLogout}
-                  className="btn btn-secondary"
-                >
+                <button onClick={onLogout} className="btn btn-secondary">
                   <LogOut className="h-4 w-4 mr-2" />
                   退出
                 </button>
               </>
             ) : (
-              <button
-                onClick={() => setShowLogin(true)}
-                className="btn btn-primary"
-              >
+              <button onClick={() => setShowLogin(true)} className="btn btn-primary">
                 <LogIn className="h-4 w-4 mr-2" />
                 登录
               </button>
@@ -432,8 +411,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                       autoPlay
                       playsInline
                       muted
-                      controls={false}
-                      className="w-full h-auto rounded-lg bg-black object-cover aspect-square"
+                      className="w-full rounded-lg bg-black"
                     />
                     <div className="flex gap-3">
                       <button onClick={capturePhoto} className="btn btn-primary flex-1">
@@ -448,11 +426,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                 ) : inputImage ? (
                   <div className="space-y-4">
                     <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                      <img
-                        src={inputImage}
-                        alt="Input"
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={inputImage} alt="Input" className="w-full h-full object-cover" />
                     </div>
                     <button
                       onClick={() => {
@@ -502,16 +476,15 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                   </div>
                   生成设置
                 </h2>
-                <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`h-5 w-5 text-gray-400 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
+                />
               </button>
-              
               {settingsOpen && (
                 <div className="card-content space-y-4">
                   {/* Seed Control */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      随机种子
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">随机种子</label>
                     <div className="flex gap-2">
                       <input
                         type="number"
@@ -540,9 +513,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
 
                   {/* ComfyUI URL */}
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      ComfyUI 服务地址
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">ComfyUI 服务地址</label>
                     <input
                       type="text"
                       value={comfyuiUrl}
@@ -619,7 +590,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                       <Sparkles className="h-8 w-8 text-purple-600 animate-pulse" />
                     </div>
                   </div>
-                  
+
                   <div className="w-full max-w-xs space-y-3">
                     <div className="progress">
                       <div className="progress-bar" style={{ width: `${progress}%` }} />
@@ -629,18 +600,14 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
                       <span className="font-medium text-purple-600">{progress}%</span>
                     </div>
                   </div>
-                  
+
                   <p className="mt-4 text-sm font-medium">正在生成卡通图...</p>
                   <p className="text-xs text-gray-500 mt-1">请耐心等待</p>
                 </div>
               ) : resultImage ? (
                 <div className="space-y-4">
                   <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                    <img
-                      src={resultImage}
-                      alt="Result"
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={resultImage} alt="Result" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex gap-3">
                     <button onClick={handleDownload} className="btn btn-primary flex-1">
@@ -670,9 +637,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       </main>
 
       {/* Login Modal */}
-      {showLogin && (
-        <Login onLogin={onLogin} onClose={() => setShowLogin(false)} />
-      )}
+      {showLogin && <Login onLogin={onLogin} onClose={() => setShowLogin(false)} />}
     </div>
   );
 }
