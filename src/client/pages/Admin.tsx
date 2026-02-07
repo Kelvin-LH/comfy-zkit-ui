@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Upload, Building2, Link2, LogOut } from 'lucide-react';
 
+/**
+ * A modified version of the admin settings page.  In addition to the
+ * existing company name, logo, and ComfyUI URL settings, this page allows
+ * administrators to edit the default positive and negative prompts used
+ * during image generation.  These values are persisted via the config
+ * API and propagate to the Home page as defaults.  Non-admin users may
+ * still override prompts for individual generations.
+ */
+
 interface User {
   id: number;
   username: string;
@@ -12,6 +21,8 @@ interface SiteConfig {
   companyName: string;
   logo: string;
   comfyuiUrl: string;
+  positivePrompt?: string;
+  negativePrompt?: string;
 }
 
 interface AdminProps {
@@ -23,15 +34,17 @@ interface AdminProps {
 }
 
 export default function Admin({ user, config, onConfigUpdate, onBack, onLogout }: AdminProps) {
+  // Local state mirrors config values so that edits are not applied until save.
   const [companyName, setCompanyName] = useState(config.companyName);
   const [logo, setLogo] = useState(config.logo);
   const [comfyuiUrl, setComfyuiUrl] = useState(config.comfyuiUrl);
+  const [positivePrompt, setPositivePrompt] = useState<string>(config.positivePrompt || '');
+  const [negativePrompt, setNegativePrompt] = useState<string>(config.negativePrompt || '');
   const [saving, setSaving] = useState(false);
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       setLogo(event.target?.result as string);
@@ -42,39 +55,54 @@ export default function Admin({ user, config, onConfigUpdate, onBack, onLogout }
   const handleSave = async () => {
     setSaving(true);
     const token = localStorage.getItem('token');
-
     try {
       // Save company name
       await fetch('/api/config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ key: 'companyName', value: companyName })
+        body: JSON.stringify({ key: 'companyName', value: companyName }),
       });
-
       // Save logo
       await fetch('/api/config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ key: 'logo', value: logo })
+        body: JSON.stringify({ key: 'logo', value: logo }),
       });
-
       // Save ComfyUI URL
       await fetch('/api/config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ key: 'comfyuiUrl', value: comfyuiUrl })
+        body: JSON.stringify({ key: 'comfyuiUrl', value: comfyuiUrl }),
       });
-
-      onConfigUpdate({ companyName, logo, comfyuiUrl });
+      // Save positive prompt
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ key: 'positivePrompt', value: positivePrompt }),
+      });
+      // Save negative prompt
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ key: 'negativePrompt', value: negativePrompt }),
+      });
+      // Notify parent about config changes
+      onConfigUpdate({ companyName, logo, comfyuiUrl, positivePrompt, negativePrompt });
       toast.success('设置已保存');
     } catch (error) {
       toast.error('保存失败');
@@ -89,28 +117,19 @@ export default function Admin({ user, config, onConfigUpdate, onBack, onLogout }
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="container flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
-            <button
-              onClick={onBack}
-              className="btn btn-outline"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              返回
+            <button onClick={onBack} className="btn btn-outline">
+              <ArrowLeft className="h-4 w-4 mr-2" /> 返回
             </button>
             <h1 className="font-semibold text-gray-900">管理设置</h1>
           </div>
-
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">
-              {user.username}
-            </span>
+            <span className="text-sm text-gray-500">{user.username}</span>
             <button onClick={onLogout} className="btn btn-secondary">
-              <LogOut className="h-4 w-4 mr-2" />
-              退出
+              <LogOut className="h-4 w-4 mr-2" /> 退出
             </button>
           </div>
         </div>
       </header>
-
       <main className="container py-8 max-w-2xl">
         <div className="card">
           <div className="card-header">
@@ -120,8 +139,7 @@ export default function Admin({ user, config, onConfigUpdate, onBack, onLogout }
             {/* Company Name */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Building2 className="h-4 w-4" />
-                公司名称
+                <Building2 className="h-4 w-4" /> 公司名称
               </label>
               <input
                 type="text"
@@ -131,12 +149,10 @@ export default function Admin({ user, config, onConfigUpdate, onBack, onLogout }
                 placeholder="输入公司或网站名称"
               />
             </div>
-
             {/* Logo */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Upload className="h-4 w-4" />
-                网站 Logo
+                <Upload className="h-4 w-4" /> 网站 Logo
               </label>
               <div className="flex items-center gap-4">
                 {logo ? (
@@ -159,24 +175,16 @@ export default function Admin({ user, config, onConfigUpdate, onBack, onLogout }
                   </div>
                 )}
                 <label className="btn btn-outline cursor-pointer">
-                  <Upload className="h-4 w-4 mr-2" />
-                  上传 Logo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                  />
+                  <Upload className="h-4 w-4 mr-2" /> 上传 Logo
+                  <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                 </label>
               </div>
               <p className="text-xs text-gray-500">建议尺寸：64x64 像素，支持 PNG、JPG 格式</p>
             </div>
-
             {/* ComfyUI URL */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <Link2 className="h-4 w-4" />
-                默认 ComfyUI 服务地址
+                <Link2 className="h-4 w-4" /> 默认 ComfyUI 服务地址
               </label>
               <input
                 type="text"
@@ -187,14 +195,35 @@ export default function Admin({ user, config, onConfigUpdate, onBack, onLogout }
               />
               <p className="text-xs text-gray-500">用户可在生成时覆盖此设置</p>
             </div>
-
+            {/* Prompt Settings */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                提示词设置
+              </label>
+              <div className="space-y-2">
+                <label className="block text-sm text-gray-600">默认正向提示词</label>
+                <textarea
+                  value={positivePrompt}
+                  onChange={(e) => setPositivePrompt(e.target.value)}
+                  rows={3}
+                  className="input"
+                  placeholder="输入正向提示词"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm text-gray-600">默认反向提示词</label>
+                <textarea
+                  value={negativePrompt}
+                  onChange={(e) => setNegativePrompt(e.target.value)}
+                  rows={3}
+                  className="input"
+                  placeholder="输入反向提示词"
+                />
+              </div>
+            </div>
             {/* Save Button */}
             <div className="pt-4 border-t border-gray-100">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="btn btn-primary"
-              >
+              <button onClick={handleSave} disabled={saving} className="btn btn-primary">
                 {saving ? (
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                 ) : (
