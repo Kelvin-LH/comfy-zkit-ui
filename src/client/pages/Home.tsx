@@ -18,14 +18,12 @@ import {
 import Login from './Login';
 
 /**
- * A user-friendly Home page layout that always shows the settings
- * without collapsible panels.  The service address (ComfyUI URL) is
- * hidden from the user and only editable in the admin page.  This
- * component allows users to upload or capture images, adjust the
- * random seed, lock/unlock it, randomize it, and configure watermark
- * settings.  Prompts are pulled from the configuration or fall back to
- * server defaults.  No direct editing of prompts or service URL is
- * exposed on this page.
+ * Redesigned Home page layout with a horizontal card arrangement.
+ * Three cards are displayed side by side on large screens: image input,
+ * generation settings (including the generate button), and the result.
+ * On smaller screens the cards stack vertically. The service URL remains
+ * hidden; users can only adjust random seed, text watermark and QR code
+ * content. Prompts and service URL are pulled from configuration.
  */
 
 interface User {
@@ -84,6 +82,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
   const positivePrompt = config.positivePrompt;
   const negativePrompt = config.negativePrompt;
   const comfyuiUrl = config.comfyuiUrl;
+
   // Handle file upload
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,7 +94,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
     };
     reader.readAsDataURL(file);
   };
-  // Handle camera
+
+  // Handle camera activation
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -107,7 +107,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       toast.error('无法访问摄像头');
     }
   };
-  // Attach stream to video
+
+  // Attach stream to video element when active
   useEffect(() => {
     if (cameraActive && streamRef.current && videoRef.current) {
       const videoEl = videoRef.current;
@@ -116,6 +117,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       videoEl.play().catch(() => {});
     }
   }, [cameraActive]);
+
   // Stop camera
   const stopCamera = () => {
     if (streamRef.current) {
@@ -124,7 +126,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
     }
     setCameraActive(false);
   };
-  // Capture photo
+
+  // Capture a frame from the video
   const capturePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement('canvas');
@@ -138,13 +141,13 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       stopCamera();
     }
   };
-  // Randomize seed
+
+  // Randomize seed if unlocked
   const randomizeSeed = () => {
-    if (!seedLocked) {
-      setSeed(Math.floor(Math.random() * 2147483647));
-    }
+    if (!seedLocked) setSeed(Math.floor(Math.random() * 2147483647));
   };
-  // Progress animation helper
+
+  // Animate progress bar
   const animateProgress = (start: number, end: number, duration = 1000) => {
     return new Promise<void>((resolve) => {
       const startTime = Date.now();
@@ -159,7 +162,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       animate();
     });
   };
-  // Handle generation
+
+  // Generate cartoon image via API
   const handleGenerate = async () => {
     if (!inputImage) {
       toast.error('请先选择或拍摄一张图片');
@@ -169,6 +173,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
     setResultImage(null);
     setProgress(0);
     try {
+      // Upload image
       setProgressText(PROGRESS_STEPS.UPLOAD.text);
       await animateProgress(PROGRESS_STEPS.UPLOAD.start, PROGRESS_STEPS.UPLOAD.end, 500);
       const uploadRes = await fetch('/api/generate/upload', {
@@ -187,7 +192,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
         await animateProgress(PROGRESS_STEPS.RESIZE.start, PROGRESS_STEPS.RESIZE.end, 300);
         toast.info('图片已自动压缩到 2560px 以内');
       }
-      // queue
+      // Queue generation
       setProgressText(PROGRESS_STEPS.QUEUE.text);
       await animateProgress(PROGRESS_STEPS.QUEUE.start, PROGRESS_STEPS.QUEUE.end, 500);
       setProgressText(PROGRESS_STEPS.GENERATE.text);
@@ -219,7 +224,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       await animateProgress(currentProgress, PROGRESS_STEPS.GENERATE.end, 300);
       let finalUrl = generateData.resultUrl;
       let finalPath = generateData.localPath;
-      // watermark
+      // Add watermark if necessary
       if (textWatermark || qrContent) {
         setProgressText(PROGRESS_STEPS.WATERMARK.text);
         await animateProgress(PROGRESS_STEPS.WATERMARK.start, PROGRESS_STEPS.WATERMARK.end, 500);
@@ -234,6 +239,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
           finalPath = wmData.localPath;
         }
       }
+      // Finish
       setProgressText(PROGRESS_STEPS.COMPLETE.text);
       await animateProgress(PROGRESS_STEPS.COMPLETE.start, PROGRESS_STEPS.COMPLETE.end, 300);
       setResultImage(finalUrl);
@@ -247,7 +253,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       setProgressText('');
     }
   };
-  // Download
+
+  // Download generated image
   const handleDownload = async () => {
     if (!resultImage) return;
     try {
@@ -265,7 +272,8 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
       toast.error('下载失败');
     }
   };
-  // Print
+
+  // Print generated image
   const handlePrint = () => {
     if (!resultImage) return;
     const w = window.open('', '_blank');
@@ -291,6 +299,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
     `);
     w.document.close();
   };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -340,137 +349,147 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
             上传照片或使用摄像头拍摄，即可通过 AI 技术将其转换为动漫风格的卡通图像
           </p>
         </div>
-        {/* Grid layout */}
-        <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Left column: input and settings */}
-          <div className="space-y-6">
-            {/* Image input */}
-            <div className="card">
-              <div className="card-header">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <span className="text-purple-600 font-bold">1</span>
-                  </div>
-                  选择图片
-                </h2>
-              </div>
-              <div className="card-content">
-                {cameraActive ? (
-                  <div className="space-y-4">
-                    <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-lg bg-black" />
-                    <div className="flex gap-3">
-                      <button onClick={capturePhoto} className="btn btn-primary flex-1">
-                        <Camera className="h-4 w-4 mr-2" /> 拍照
-                      </button>
-                      <button onClick={stopCamera} className="btn btn-secondary flex-1">
-                        取消
-                      </button>
-                    </div>
-                  </div>
-                ) : inputImage ? (
-                  <div className="space-y-4">
-                    <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
-                      <img src={inputImage} alt="Input" className="w-full h-full object-cover" />
-                    </div>
-                    <button onClick={() => { setInputImage(null); setResultImage(null); }} className="btn btn-secondary w-full">
-                      重新选择
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/50 transition-colors">
-                      <ImageIcon className="h-12 w-12 text-gray-400 mb-3" />
-                      <p className="text-sm text-gray-600">点击或拖拽上传图片</p>
-                      <p className="text-xs text-gray-400 mt-1">支持 JPG、PNG、WebP 格式</p>
-                    </div>
-                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-                    <button onClick={startCamera} className="btn btn-outline w-full">
-                      <Camera className="h-4 w-4 mr-2" /> 使用摄像头拍照
-                    </button>
-                  </div>
-                )}
-              </div>
+        {/* Responsive grid: three cards side by side on large screens */}
+        <div className="grid gap-8 max-w-6xl mx-auto lg:grid-cols-3">
+          {/* Card 1: image input */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="font-semibold flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <span className="text-purple-600 font-bold">1</span>
+                </div>
+                选择图片
+              </h2>
             </div>
-            {/* Settings (always visible, arranged horizontally to prevent long pages) */}
-            <div className="card">
-              <div className="card-header">
-                <h2 className="font-semibold flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <span className="text-purple-600 font-bold">2</span>
-                  </div>
-                  生成设置
-                </h2>
-              </div>
-              {/* Arrange settings in a single row on medium screens and above */}
-              <div className="card-content">
-                <div className="flex flex-col gap-4 md:flex-row md:gap-4">
-                  {/* Seed controls */}
-                  <div className="flex-1 space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">随机种子</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        value={seed}
-                        onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
-                        disabled={seedLocked}
-                        className="input flex-1"
-                      />
-                      <button
-                        onClick={() => setSeedLocked(!seedLocked)}
-                        className={`btn ${seedLocked ? 'btn-primary' : 'btn-outline'}`}
-                        title={seedLocked ? '解锁种子' : '锁定种子'}
-                      >
-                        {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                      </button>
-                      <button
-                        onClick={randomizeSeed}
-                        disabled={seedLocked}
-                        className="btn btn-outline"
-                        title="随机生成"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  {/* Text watermark */}
-                  <div className="flex-1 space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">文字水印</label>
-                    <input
-                      type="text"
-                      value={textWatermark}
-                      onChange={(e) => setTextWatermark(e.target.value)}
-                      className="input w-full"
-                      placeholder="输入水印文字（可选）"
-                    />
-                  </div>
-                  {/* QR code content */}
-                  <div className="flex-1 space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">二维码内容</label>
-                    <input
-                      type="text"
-                      value={qrContent}
-                      onChange={(e) => setQrContent(e.target.value)}
-                      className="input w-full"
-                      placeholder="输入二维码内容（可选）"
-                    />
+            <div className="card-content">
+              {cameraActive ? (
+                <div className="space-y-4">
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-lg bg-black" />
+                  <div className="flex gap-3">
+                    <button onClick={capturePhoto} className="btn btn-primary flex-1">
+                      <Camera className="h-4 w-4 mr-2" /> 拍照
+                    </button>
+                    <button onClick={stopCamera} className="btn btn-secondary flex-1">
+                      取消
+                    </button>
                   </div>
                 </div>
-              </div>
-            </div>
-            {/* Generate button */}
-            <button onClick={handleGenerate} disabled={!inputImage || isGenerating} className="btn btn-primary w-full h-12 text-base">
-              {isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" /> 生成中...
-                </>
+              ) : inputImage ? (
+                <div className="space-y-4">
+                  <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100">
+                    <img src={inputImage} alt="Input" className="w-full h-full object-cover" />
+                  </div>
+                  <button onClick={() => { setInputImage(null); setResultImage(null); }} className="btn btn-secondary w-full">
+                    重新选择
+                  </button>
+                </div>
               ) : (
-                <>
-                  <Wand2 className="h-5 w-5 mr-2" /> 开始生成
-                </>
+                <div className="space-y-4">
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center cursor-pointer hover:border-purple-400 hover:bg-purple-50/50 transition-colors"
+                  >
+                    <ImageIcon className="h-12 w-12 text-gray-400 mb-3" />
+                    <p className="text-sm text-gray-600">点击或拖拽上传图片</p>
+                    <p className="text-xs text-gray-400 mt-1">支持 JPG、PNG、WebP 格式</p>
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                  <button onClick={startCamera} className="btn btn-outline w-full">
+                    <Camera className="h-4 w-4 mr-2" /> 使用摄像头拍照
+                  </button>
+                </div>
               )}
-            </button>
+            </div>
           </div>
-          {/* Right column: result */}
+          {/* Card 2: settings and generate */}
+          <div className="card h-fit">
+            <div className="card-header">
+              <h2 className="font-semibold flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <span className="text-purple-600 font-bold">2</span>
+                </div>
+                生成设置
+              </h2>
+            </div>
+            <div className="card-content space-y-4">
+              {/* Settings: vertical stack (short page, clearer scanning) */}
+              <div className="space-y-4">
+                {/* Seed */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">随机种子</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={seed}
+                      onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
+                      disabled={seedLocked}
+                      className="input flex-1"
+                      placeholder="留空则随机"
+                    />
+                    <button
+                      onClick={() => setSeedLocked(!seedLocked)}
+                      className={`btn ${seedLocked ? 'btn-primary' : 'btn-outline'}`}
+                      title={seedLocked ? '解锁种子' : '锁定种子'}
+                    >
+                      {seedLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={randomizeSeed}
+                      disabled={seedLocked}
+                      className="btn btn-outline"
+                      title="随机生成"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">锁定后多次生成可复现结果。</p>
+                </div>
+
+                {/* Text watermark */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">文字水印</label>
+                  <input
+                    type="text"
+                    value={textWatermark}
+                    onChange={(e) => setTextWatermark(e.target.value)}
+                    className="input w-full"
+                    placeholder="可选：输入水印文字"
+                    maxLength={200}
+                  />
+                </div>
+
+                {/* QR code content */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">二维码内容</label>
+                  <input
+                    type="text"
+                    value={qrContent}
+                    onChange={(e) => setQrContent(e.target.value)}
+                    className="input w-full"
+                    placeholder="可选：输入二维码内容（网址/文本）"
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+              {/* Generate button */}
+              <button
+                onClick={handleGenerate}
+                disabled={!inputImage || isGenerating}
+                className="btn btn-primary w-full h-12 text-base"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" /> 生成中...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="h-5 w-5 mr-2" /> 开始生成
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          {/* Card 3: result */}
           <div className="card h-fit">
             <div className="card-header">
               <h2 className="font-semibold flex items-center gap-2">
