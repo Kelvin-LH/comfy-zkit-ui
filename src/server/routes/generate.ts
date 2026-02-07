@@ -147,7 +147,7 @@ router.post('/cartoon', async (req, res) => {
       },
       "4": {
         "inputs": {
-          "text": "spy x family style, anime portrait, 2d illustration, clean crisp lineart, simple shapes, soft cel shading, warm pastel palette, gentle lighting, smooth skin, elegant and cute, expressive big eyes, natural face proportions, subtle blush, neat hair strands, tidy outfit, minimal background, high quality, best quality, masterpiece",
+          "text": "anime portrait, 2d illustration, crisp lineart, studio anime style, clean edges, soft shading, pastel palette, smooth skin, detailed eyes, high quality, best quality, masterpiece",
           "clip": ["1", 1]
         },
         "class_type": "CLIPTextEncode",
@@ -155,7 +155,7 @@ router.post('/cartoon', async (req, res) => {
       },
       "5": {
         "inputs": {
-          "text": "photorealistic, realism, skin pores, wrinkles, 3d, cgi, render, doll, wax, lowres, blurry, out of focus, bad face, deformed face, long face, asymmetry, cross-eye, bad anatomy, bad hands, missing fingers, extra fingers, fused fingers, mangled hands, bad teeth, watermark, text, logo, noisy, jpeg artifacts, oversaturated, harsh contrast, glitch",
+          "text": "photorealistic, realistic skin texture, pores, wrinkles, nsfw, lowres, blurry, bad anatomy, bad hands, extra fingers, watermark, text, logo, noisy, jpeg artifacts, oversaturated, harsh contrast, glitch",
           "clip": ["1", 1]
         },
         "class_type": "CLIPTextEncode",
