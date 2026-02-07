@@ -49,13 +49,11 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, resizedBuffer);
 
-    // Get the host from request headers
-    const protocol = req.protocol || 'http';
-    const host = req.get('host') || 'localhost:3001';
-    const fullUrl = `${protocol}://${host}/uploads/${filename}`;
+    // Use relative URL that works across all network addresses
+    const relativeUrl = `/uploads/${filename}`;
 
     res.json({
-      url: fullUrl,
+      url: relativeUrl,
       localPath: filePath,
       width: dimensions.width,
       height: dimensions.height,
@@ -175,14 +173,12 @@ router.post('/cartoon', async (req, res) => {
     const resultPath = path.join(uploadsDir, resultFilename);
     fs.writeFileSync(resultPath, resultBuffer);
 
-    // Get the host from request headers
-    const protocol = req.protocol || 'http';
-    const host = req.get('host') || 'localhost:3001';
-    const fullUrl = `${protocol}://${host}/uploads/${resultFilename}`;
+    // Use relative URL that works across all network addresses
+    const relativeUrl = `/uploads/${resultFilename}`;
 
     res.json({
       success: true,
-      resultUrl: fullUrl,
+      resultUrl: relativeUrl,
       localPath: resultPath
     });
   } catch (error) {
@@ -230,13 +226,11 @@ router.post('/watermark', async (req, res) => {
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, watermarkedBuffer);
 
-    // Get the host from request headers
-    const protocol = req.protocol || 'http';
-    const host = req.get('host') || 'localhost:3001';
-    const fullUrl = `${protocol}://${host}/uploads/${filename}`;
+    // Use relative URL that works across all network addresses
+    const relativeUrl = `/uploads/${filename}`;
 
     res.json({
-      url: fullUrl,
+      url: relativeUrl,
       localPath: filePath
     });
   } catch (error) {
