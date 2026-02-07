@@ -1,6 +1,7 @@
 import sharp from 'sharp';
 import QRCode from 'qrcode';
 
+// Maximum dimension for resizing images
 const MAX_DIMENSION = 2560;
 
 // Resize image if needed (max 2560px)
@@ -31,7 +32,16 @@ export async function getImageDimensions(imageBuffer: Buffer): Promise<{ width: 
   };
 }
 
-// Add watermark (text and/or QR code)
+/**
+ * Add watermark (text and/or QR code) to an image.
+ *
+ * This implementation dynamically calculates the width of the
+ * text watermark by considering each character's approximate
+ * visual width. CJK (Chinese/Japanese/Korean) characters are
+ * treated as full-width (1em) while Latin characters are treated
+ * as narrower (~0.6em). This prevents long watermark text from
+ * being truncated prematurely.
+ */
 export async function addWatermark(
   imageBuffer: Buffer,
   options: {
@@ -41,6 +51,7 @@ export async function addWatermark(
 ): Promise<Buffer> {
   const { textWatermark, qrContent } = options;
 
+  // If no watermark content provided, return original image
   if (!textWatermark && !qrContent) {
     return imageBuffer;
   }
@@ -53,7 +64,7 @@ export async function addWatermark(
   const padding = 20;
   let currentBottom = padding;
 
-  // Add QR code watermark
+  // Add QR code watermark if provided
   if (qrContent) {
     const qrSize = Math.min(120, Math.floor(width * 0.15));
     const qrBuffer = await QRCode.toBuffer(qrContent, {
@@ -75,10 +86,26 @@ export async function addWatermark(
     currentBottom += qrSize + 10;
   }
 
-  // Add text watermark
+  // Add text watermark if provided
   if (textWatermark) {
+    // Dynamically calculate font size based on image width
     const fontSize = Math.max(16, Math.floor(width * 0.025));
-    const textWidth = textWatermark.length * fontSize * 0.6;
+
+    // Estimate visual width for each character. CJK characters are
+    // assumed to occupy full width (1 * fontSize), while others are
+    // narrower (0.6 * fontSize). This prevents long text from being
+    // truncated when rendered.
+    let charUnits = 0;
+    for (const ch of textWatermark) {
+      // Unicode ranges for CJK Unified Ideographs and other full-width characters
+      if (/[\u3400-\u9fff\uff00-\uffef]/.test(ch)) {
+        charUnits += 1;
+      } else {
+        charUnits += 0.6;
+      }
+    }
+
+    const textWidth = charUnits * fontSize;
     const textHeight = fontSize + 10;
 
     const textSvg = `
