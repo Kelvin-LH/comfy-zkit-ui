@@ -607,7 +607,7 @@ export default function Home({ user, config, onLogin, onLogout, onAdminClick }: 
               ) : resultImage ? (
                 <div className="space-y-4">
                   <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                    <img src={resultImage} alt="Result" className="w-full h-full object-cover" />
+                    <img src={resultImage} alt="Result" className="w-full h-full object-cover" crossOrigin="anonymous" onError={(e) => { console.error('Image load error:', resultImage, e); toast.error('图片加载失败，请检查网络连接'); }} onLoad={() => { console.log('图片加载成功:', resultImage); }} />
                   </div>
                   <div className="flex gap-3">
                     <button onClick={handleDownload} className="btn btn-primary flex-1">

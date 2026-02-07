@@ -1,6 +1,7 @@
 {
   "name": "comfy-zkit-ui",
   "version": "1.0.0",
+  "type": "module",
   "description": "ComfyUI 图生卡通助手 - 网页应用版",
   "author": "ComfyZKit",
   "license": "MIT",

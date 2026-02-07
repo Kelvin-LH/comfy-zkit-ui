@@ -3,6 +3,7 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { authRouter } from './routes/auth.js';
 import { configRouter } from './routes/config.js';
@@ -26,13 +27,31 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Middleware
-app.use(cors());
+// Middleware - CORS configuration
+app.use(cors({
+  origin: '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Add permissions policy headers for camera access
+app.use((req, res, next) => {
+  res.header('Permissions-Policy', 'camera=*, microphone=*');
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve uploaded files
-app.use('/uploads', express.static(uploadsDir));
+// Serve uploaded files with proper headers
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Cache-Control', 'public, max-age=3600');
+  next();
+}, express.static(uploadsDir));
 
 // API Routes
 app.use('/api/auth', authRouter);
@@ -47,11 +66,16 @@ app.get('/api/health', (req, res) => {
 // Serve static files (both development and production)
 const clientDir = path.join(__dirname, '../client');
 if (fs.existsSync(clientDir)) {
-  // 先服务静态文件
-  app.use(express.static(clientDir));
-  // 然后处理所有其他路由，返回 index.html（SPA 路由）
+  // Serve static files first
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Permissions-Policy', 'camera=*, microphone=*');
+    next();
+  }, express.static(clientDir));
+  
+  // Then handle all other routes, return index.html (SPA routing)
   app.get('*', (req, res) => {
-    // 不是 API 请求才返回 index.html
+    // Only return index.html for non-API requests
     if (!req.path.startsWith('/api')) {
       res.sendFile(path.join(clientDir, 'index.html'));
     } else {
@@ -60,15 +84,15 @@ if (fs.existsSync(clientDir)) {
   });
 }
 
-// 允许从任何 IP 地址访问
+// Allow access from any IP address
 app.listen(PORT, '0.0.0.0', () => {
-  const hostname = require('os').hostname();
-  const interfaces = require('os').networkInterfaces();
+  const hostname = os.hostname();
+  const interfaces = os.networkInterfaces();
   let ipAddress = 'localhost';
   
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
-      // 跳过内部和 IPv6 地址
+      // Skip internal and IPv6 addresses
       if (iface.family === 'IPv4' && !iface.internal) {
         ipAddress = iface.address;
         break;
