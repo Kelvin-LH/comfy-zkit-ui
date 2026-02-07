@@ -9,13 +9,25 @@ import { createComfyUIService } from '../services/comfyui.js';
 import { createHistoryRecord, updateHistoryRecord, getHistoryByUserId, getConfigValue } from '../services/dataStore.js';
 import { authMiddleware } from './auth.js';
 
+// This file rewrites the original generate.ts to ensure that image URLs returned to
+// the client are absolute and accessible across different hosts or ports.  The
+// helper `toPublicUrl` inspects the incoming request and, if a PUBLIC_BASE_URL
+// environment variable is set, uses that as the base.  Otherwise it falls back
+// to the current request's protocol and host.  All image endpoints now return
+// `url` fields pointing at this absolute URL, ensuring that the front‑end can
+// retrieve uploaded or generated images even when it is served from a
+// different origin.
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = Router();
 
 // Configure multer for file uploads
-const uploadsDir = path.join(__dirname, '../../../uploads');
+// Use a stable uploads directory rooted at the project working directory.  When
+// compiled, __dirname may change, so using process.cwd() avoids incorrect
+// relative paths.
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -25,6 +37,21 @@ const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
+
+/**
+ * Compute an absolute URL for a given relative path.  If PUBLIC_BASE_URL is
+ * defined in the environment, that will be used as the base.  Otherwise
+ * the protocol and host from the incoming request are used.  Leading or
+ * trailing slashes are handled to avoid duplicate separators.
+ */
+function toPublicUrl(req: any, relativePath: string): string {
+  // Environment variable takes precedence for deployment flexibility
+  const base = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
+  // Remove trailing slash from base and ensure relative begins with a slash
+  const normalizedBase = base.replace(/\/$/, '');
+  const normalizedRel = relativePath.startsWith('/') ? relativePath : '/' + relativePath;
+  return normalizedBase + normalizedRel;
+}
 
 // Upload and resize image
 router.post('/upload', upload.single('image'), async (req, res) => {
@@ -49,11 +76,12 @@ router.post('/upload', upload.single('image'), async (req, res) => {
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, resizedBuffer);
 
-    // Use relative URL that works across all network addresses
+    // Compute URLs
     const relativeUrl = `/uploads/${filename}`;
+    const publicUrl = toPublicUrl(req, relativeUrl);
 
     res.json({
-      url: relativeUrl,
+      url: publicUrl,
       localPath: filePath,
       width: dimensions.width,
       height: dimensions.height,
@@ -119,7 +147,7 @@ router.post('/cartoon', async (req, res) => {
       },
       "4": {
         "inputs": {
-          "text": "anime portrait, 2d illustration, crisp lineart, studio anime style, clean edges, soft shading, pastel palette, smooth skin, detailed eyes, high quality, best quality, masterpiece",
+          "text": "spy x family style, anime portrait, 2d illustration, clean crisp lineart, simple shapes, soft cel shading, warm pastel palette, gentle lighting, smooth skin, elegant and cute, expressive big eyes, natural face proportions, subtle blush, neat hair strands, tidy outfit, minimal background, high quality, best quality, masterpiece",
           "clip": ["1", 1]
         },
         "class_type": "CLIPTextEncode",
@@ -127,7 +155,7 @@ router.post('/cartoon', async (req, res) => {
       },
       "5": {
         "inputs": {
-          "text": "photorealistic, realistic skin texture, pores, wrinkles, nsfw, lowres, blurry, bad anatomy, bad hands, extra fingers, watermark, text, logo, noisy, jpeg artifacts, oversaturated, harsh contrast, glitch",
+          "text": "photorealistic, realism, skin pores, wrinkles, 3d, cgi, render, doll, wax, lowres, blurry, out of focus, bad face, deformed face, long face, asymmetry, cross-eye, bad anatomy, bad hands, missing fingers, extra fingers, fused fingers, mangled hands, bad teeth, watermark, text, logo, noisy, jpeg artifacts, oversaturated, harsh contrast, glitch",
           "clip": ["1", 1]
         },
         "class_type": "CLIPTextEncode",
@@ -173,18 +201,19 @@ router.post('/cartoon', async (req, res) => {
     const resultPath = path.join(uploadsDir, resultFilename);
     fs.writeFileSync(resultPath, resultBuffer);
 
-    // Use relative URL that works across all network addresses
+    // Compute URLs
     const relativeUrl = `/uploads/${resultFilename}`;
+    const publicUrl = toPublicUrl(req, relativeUrl);
 
     res.json({
       success: true,
-      resultUrl: relativeUrl,
+      resultUrl: publicUrl,
       localPath: resultPath
     });
   } catch (error) {
     console.error('Generation error:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : '生成失败，请检查 ComfyUI 服务是否正常运行' 
+    res.status(500).json({
+      error: error instanceof Error ? error.message : '生成失败，请检查 ComfyUI 服务是否正常运行'
     });
   }
 });
@@ -226,11 +255,12 @@ router.post('/watermark', async (req, res) => {
     const filePath = path.join(uploadsDir, filename);
     fs.writeFileSync(filePath, watermarkedBuffer);
 
-    // Use relative URL that works across all network addresses
+    // Compute URLs
     const relativeUrl = `/uploads/${filename}`;
+    const publicUrl = toPublicUrl(req, relativeUrl);
 
     res.json({
-      url: relativeUrl,
+      url: publicUrl,
       localPath: filePath
     });
   } catch (error) {
