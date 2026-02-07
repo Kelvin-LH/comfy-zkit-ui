@@ -44,12 +44,19 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  const clientDir = path.join(__dirname, '../client');
+// Serve static files (both development and production)
+const clientDir = path.join(__dirname, '../client');
+if (fs.existsSync(clientDir)) {
+  // 先服务静态文件
   app.use(express.static(clientDir));
+  // 然后处理所有其他路由，返回 index.html（SPA 路由）
   app.get('*', (req, res) => {
-    res.sendFile(path.join(clientDir, 'index.html'));
+    // 不是 API 请求才返回 index.html
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(clientDir, 'index.html'));
+    } else {
+      res.status(404).json({ error: 'API not found' });
+    }
   });
 }
 
@@ -72,7 +79,8 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n✓ 服务器运行在 http://0.0.0.0:${PORT}`);
   console.log(`✓ 本地访问: http://localhost:${PORT}`);
   console.log(`✓ 网络访问: http://${ipAddress}:${PORT}`);
-  console.log(`✓ ComfyUI 服务地址: http://127.0.0.1:8188 (仅本地)\n`);
+  console.log(`✓ 默认 ComfyUI 地址: http://127.0.0.1:8188`);
+  console.log(`✓ 提示: 可在管理设置中自定义 ComfyUI 服务地址\n`);
 });
 
 export default app;
