@@ -4,6 +4,14 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 
+/**
+ * A modified App component that extends the SiteConfig to include
+ * customizable positive and negative prompts.  These values are fetched
+ * from the server configuration on mount and propagate through to the
+ * Home and Admin pages.  Admin users can persist changes, while normal
+ * users can override them in the Home page settings panel.
+ */
+
 interface User {
   id: number;
   username: string;
@@ -14,6 +22,8 @@ interface SiteConfig {
   companyName: string;
   logo: string;
   comfyuiUrl: string;
+  positivePrompt?: string;
+  negativePrompt?: string;
 }
 
 export default function App() {
@@ -21,7 +31,9 @@ export default function App() {
   const [config, setConfig] = useState<SiteConfig>({
     companyName: '卡通图生成器',
     logo: '',
-    comfyuiUrl: 'http://127.0.0.1:8188'
+    comfyuiUrl: 'http://127.0.0.1:8188',
+    positivePrompt: '',
+    negativePrompt: '',
   });
   const [currentPage, setCurrentPage] = useState<'home' | 'admin'>('home');
   const [loading, setLoading] = useState(true);
@@ -29,9 +41,9 @@ export default function App() {
   // Load config on mount
   useEffect(() => {
     fetch('/api/config')
-      .then(res => res.json())
-      .then(data => {
-        setConfig(prev => ({ ...prev, ...data }));
+      .then((res) => res.json())
+      .then((data) => {
+        setConfig((prev) => ({ ...prev, ...data }));
       })
       .catch(console.error);
   }, []);
@@ -41,13 +53,13 @@ export default function App() {
     const token = localStorage.getItem('token');
     if (token) {
       fetch('/api/auth/me', {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       })
-        .then(res => {
+        .then((res) => {
           if (res.ok) return res.json();
           throw new Error('Unauthorized');
         })
-        .then(data => {
+        .then((data) => {
           setUser(data.user);
         })
         .catch(() => {
@@ -64,15 +76,12 @@ export default function App() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.error || '登录失败');
       }
-
       localStorage.setItem('token', data.token);
       setUser(data.user);
       toast.success('登录成功');
@@ -90,7 +99,7 @@ export default function App() {
   };
 
   const handleConfigUpdate = (newConfig: Partial<SiteConfig>) => {
-    setConfig(prev => ({ ...prev, ...newConfig }));
+    setConfig((prev) => ({ ...prev, ...newConfig }));
   };
 
   if (loading) {
@@ -104,9 +113,8 @@ export default function App() {
   return (
     <>
       <Toaster position="top-center" richColors />
-      
       {currentPage === 'admin' && user?.role === 'admin' ? (
-        <Admin 
+        <Admin
           user={user}
           config={config}
           onConfigUpdate={handleConfigUpdate}
@@ -114,7 +122,7 @@ export default function App() {
           onLogout={handleLogout}
         />
       ) : (
-        <Home 
+        <Home
           user={user}
           config={config}
           onLogin={handleLogin}
